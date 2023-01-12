@@ -166,21 +166,25 @@ public class Line : MonoBehaviour
                                 Vector2 near = GetPointNeareast(hit31.point);
                                 if (near == ropePositions[ropePositions.Count - 3])
                                 {
-                                    //follow vao cho nay
-                                    // if (hit.collider == hit31.collider)
+                                    ////follow vao cho nay
+                                    //// if (hit.collider == hit31.collider)
+                                    //{
+                                    //    RemovePointNearEnd();
+                                    //}
+                                   if (hit.collider != hit31.collider)
+                                    {
+                                        Vector2 center = centerTriangle(ropePositions[ropePositions.Count - 2], ropePositions[ropePositions.Count - 3], (Vector2)hand.transform.position);
+                                        List<Vector2> newList = GetPointOfAPolygon(collider12.GetComponent<PolygonCollider2D>());
+                                        Vector2 randomPoint = RandomPointList(newList, (Vector2)hit.point);
+                                        if (!SameSide(center, randomPoint, ropePositions[ropePositions.Count - 2], ropePositions[ropePositions.Count - 3]))
+                                        {
+                                            RemovePointNearEnd();
+                                        }
+                                    }
+                                   else
                                     {
                                         RemovePointNearEnd();
-                                    }
-                                    //if (hit.collider == hit31.collider)
-                                    //{
-                                    //    Vector2 center = centerTriangle(ropePositions[0], ropePositions[1], (Vector2)hand.transform.position);
-                                    //    List<Vector2> newList = GetPointOfAPolygon(collider12.GetComponent<PolygonCollider2D>());
-                                    //    Vector2 randomPoint = RandomPointList(newList, (Vector2)hit.point);
-                                    //    if (SameSide(center, randomPoint, (Vector2)hand.transform.position, ropePositions[ropePositions.Count - 3]))
-                                    //    {
-                                    //        RemovePointNearEnd();
-                                    //    }
-                                    //}
+                                    }    
 
                                 }
 
