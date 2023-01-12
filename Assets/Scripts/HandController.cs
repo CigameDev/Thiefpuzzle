@@ -7,19 +7,19 @@ public class HandController : MonoBehaviour
     private bool canConnectWithItem = false;
     public bool CanConnectWithItem => canConnectWithItem;
     public GameObject stolengoods;
-    private void OnTriggerEnter2D(Collider2D collision)
+    private void OnTriggerEnter2D(Collider2D col)
     {
-        if(collision.tag =="Stolen goods")
+        if(col.tag == StringDefine.GAMETAG_STOLENGOODS)
         {
-            Debug.Log("va cham voi do an trom");
+
             canConnectWithItem = true;
-            stolengoods = collision.gameObject;
-            //collision.transform.parent = gameObject.transform;
+            stolengoods = col.gameObject;
+            //col.transform.parent = gameObject.transform;
         }    
     }
-    private void OnTriggerExit2D(Collider2D collision)
+    private void OnTriggerExit2D(Collider2D col)
     {
-        Debug.Log("Thoat ra roi");
+
         canConnectWithItem = false;
         stolengoods = null;
     }

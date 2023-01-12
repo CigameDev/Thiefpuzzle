@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 2
   tags:
   - Stolen goods
+  - Hand
+  - Line
   layers:
   - Default
   - TransparentFX

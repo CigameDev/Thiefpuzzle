@@ -29,6 +29,7 @@ public class EventDispatcher : MonoBehaviour
         if(s_intance == this)
         {
             s_intance = null;
+            ClearAllListener();
         }
     }
     #endregion
@@ -72,7 +73,7 @@ public class EventDispatcher : MonoBehaviour
             _listeners[eventId]-=callback;
         }    
     }    
-    public void ClearListener()
+    public void ClearAllListener()
     {
         _listeners.Clear();
     }
