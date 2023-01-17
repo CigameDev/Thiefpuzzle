@@ -36,6 +36,7 @@ public class Line : MonoBehaviour
     private Camera mainCamera;
     private Collider2D collider12 = null;
     private Collider2D collider13 = null;
+    private List<Collider2D> collider2Ds = new List<Collider2D>();//luu lai cac colider da duoc ket noi 
     void Awake()
     {
         ropeRenderer = GetComponent<LineRenderer>();
@@ -61,7 +62,7 @@ public class Line : MonoBehaviour
         ropePositions.Add(root.transform.position);
         ropePositions.Add(hand.transform.position);
 
-        
+
     }
     #endregion
     
@@ -93,7 +94,7 @@ public class Line : MonoBehaviour
     protected virtual Vector2 DirectionRayCast31()//huong vecto tu hand toi diem truoc truoc no(count-1 -> count -3 )
     {
         int length = ropePositions.Count;
-        Debug.DrawLine(ropePositions[length - 3], (Vector2)hand.transform.position);
+        Debug.DrawLine(ropePositions[length - 3], (Vector2)hand.transform.position, Color.cyan);
         return ropePositions[length - 3] - (Vector2)hand.transform.position;
     }
     private void GetPointPolygon()//lay ra tat ca nhung diem thuoc tat ca cac polygon
@@ -101,20 +102,7 @@ public class Line : MonoBehaviour
         pointPolygons = Obstacle.Ins.ListPointPolygon.ToArray();
     }
 
-    protected virtual Vector2 GetPointNeareast(Vector2 point)
-    {
-        Vector2 result = pointPolygons[0];
-        float minDistance = Vector2.Distance(result, point);
-        for (int i = 1; i < pointPolygons.Length; i++)
-        {
-            if (minDistance > Vector2.Distance(pointPolygons[i], point))
-            {
-                result = pointPolygons[i];
-                minDistance = Vector2.Distance(result, point);
-            }
-        }
-        return result;
-    }
+    
     #region HandleInput
     protected virtual void HandleInput()//xu ly dau vao
     {
@@ -142,13 +130,13 @@ public class Line : MonoBehaviour
                 collider12 = hit.collider;
                 if (hit.collider != null)
                 {
-                    if (ropePositions[ropePositions.Count - 2] != hit.point)
+                    Vector2 nearPoint12 = GetPointNearOfPolygon(hit.collider, hit.point);
+                    if (ropePositions[ropePositions.Count - 2] != nearPoint12)
                     {
-                        if (isBetween(hit.point, hand.transform.position, ropePositions[ropePositions.Count - 2]))
+                        if (isBetween(nearPoint12, hand.transform.position, ropePositions[ropePositions.Count - 2]))
                         {
                             ropeAttached = true;
-                            Vector2 pointAdd = GetPointNeareast(hit.point);
-                            ropePositions.Insert(ropePositions.Count - 1, pointAdd);
+                            ropePositions.Insert(ropePositions.Count - 1, nearPoint12);
 
                         }
                     }
@@ -163,14 +151,11 @@ public class Line : MonoBehaviour
                             collider13 = hit31.collider;
                             if (hit31.collider != null)//sua o day
                             {
-                                Vector2 near = GetPointNeareast(hit31.point);
-                                if (near == ropePositions[ropePositions.Count - 3])
+                                Vector2 nearPoint13 = GetPointNearOfPolygon(hit31.collider, hit31.point);
+                                float distance = Vector2.Distance(hit31.point, ropePositions[ropePositions.Count - 3]);
+                                //if (hit31.point == ropePositions[ropePositions.Count - 3])
+                                if (distance <0.2f)
                                 {
-                                    ////follow vao cho nay
-                                    //// if (hit.collider == hit31.collider)
-                                    //{
-                                    //    RemovePointNearEnd();
-                                    //}
                                    if (hit.collider != hit31.collider)
                                     {
                                         Vector2 center = centerTriangle(ropePositions[ropePositions.Count - 2], ropePositions[ropePositions.Count - 3], (Vector2)hand.transform.position);
@@ -180,10 +165,17 @@ public class Line : MonoBehaviour
                                         {
                                             RemovePointNearEnd();
                                         }
+
                                     }
-                                   else
+                                   else//hit.collider == hit31.collider
                                     {
-                                        RemovePointNearEnd();
+                                        Vector2 center = centerTriangle(ropePositions[ropePositions.Count - 2], ropePositions[ropePositions.Count - 3], (Vector2)hand.transform.position);
+                                        List<Vector2> newList = GetPointOfAPolygon(collider12.GetComponent<PolygonCollider2D>());
+                                        Vector2 randomPoint = RandomPointList2(newList, (Vector2)nearPoint12, (Vector2)nearPoint13);
+                                        if (!SameSide(center, randomPoint, ropePositions[ropePositions.Count - 2], ropePositions[ropePositions.Count - 3]))
+                                        {
+                                            RemovePointNearEnd();
+                                        }
                                     }    
 
                                 }
@@ -194,14 +186,9 @@ public class Line : MonoBehaviour
                                 if (ropePositions.Count == 3)
                                 {
                                     Vector2 center = centerTriangle(ropePositions[0], ropePositions[1], (Vector2)hand.transform.position);
-                                    Vector2 pointNear = Obstacle.Ins.GetPointNearInList(ropePositions[1]);
-                                    Vector2 pointRandom = Vector2.zero;
-                                    do
-                                    {
-                                        int number = Random.Range(0, pointPolygons.Length);
-                                        pointRandom = pointPolygons[number];
-                                    } while (pointRandom == ropePositions[1]);
-                                    if (SameSide(pointNear, center, ropePositions[0], ropePositions[1]) == false)
+                                    List<Vector2> newList = GetPointOfAPolygon(collider12.GetComponent<PolygonCollider2D>());
+                                    Vector2 newRandomPoint = RandomPointList(newList, (Vector2)nearPoint12);
+                                    if (SameSide(newRandomPoint, center, ropePositions[0], ropePositions[1]) == false)
                                     {
                                         RemovePointNearEnd();
                                     }
@@ -243,13 +230,41 @@ public class Line : MonoBehaviour
     protected virtual Vector2 RandomPointList(List<Vector2> list,Vector2 Input)
     {
         // lay ra 1 diem khac voi Input trong mang list Vector2
-
+        float maxDistance = 0f;
+        Vector2 result = new Vector2();
         for(int i=0;i<list.Count;i++)
         {
-            if(list[i] != Input)
-                return list[i];
+            if(Vector2.Distance(Input, list[i]) > maxDistance)
+            {
+                maxDistance = Vector2.Distance(Input, list[i]);
+                result = list[i];
+            }    
+        }
+        return result;
+       
+    }    
+    protected virtual Vector2 RandomPointList2(List<Vector2>list,Vector2 Input1 ,Vector2 Input2)
+    {
+        //lay ra 1 diem trong list khac ca 2 diem list 1 va list 2
+        if(list[0] != Input1 && list[0]!=Input2) return list[0];
+        if (list[1] != Input1 && list[1] != Input2) return list[1];
+        return list[2];
+    }    
+    protected virtual Vector2 GetPointNearOfPolygon(Collider2D col,Vector2 Input)
+    {
+        PolygonCollider2D poly = col.GetComponent<PolygonCollider2D>();
+        List<Vector2> result = GetPointOfAPolygon(poly);
+        Vector2 resultVector = result[0];
+        float minDistance = Vector2.Distance(result[0], Input);
+        for(int i=1;i< result.Count;i++)
+        {
+            if(minDistance > Vector2.Distance(Input, result[i]))
+            {
+                minDistance = Vector2.Distance(Input, result[i]);
+                resultVector = result[i];
+            }    
         }    
-        return  new Vector2(100f,100f);
+        return resultVector;
     }    
     protected virtual void UpdateRopePositions()
     {
@@ -335,6 +350,126 @@ public class Line : MonoBehaviour
         ropeRenderer.startColor = color;
         ropeRenderer.endColor = color;
     }
+    private float AngelOfTwovector(Vector2 hand,Vector2 vec2,Vector2 vec3)
+    {
+        Vector2 vec12 = vec2 - hand;
+        Vector2 vec13 = vec3 - hand;
+        return Vector2.SignedAngle(vec12, vec13);
+    }
+    #region HandleInput1
+    protected virtual void HandleInput1()//xu ly dau vao
+    {
+        if (Input.GetMouseButtonDown(0))//khi nhan chuot xuong thi lay vi tri cua chuot (mouseDown ) va luu vao oldMouseDown
+        {
+            mouseDown = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+            oldMousePos = mouseDown;
+        }
 
+        if (Input.GetMouseButton(0))
+        {
+            Vector3 curPosMouse = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+            directionEachFrame = (curPosMouse - oldMousePos);
+            directionEachFrame = new Vector2(Mathf.Abs(directionEachFrame.x) > Mathf.Abs(max_speed_x) ? (max_speed_x * directionEachFrame.x / Mathf.Abs(directionEachFrame.x)) : directionEachFrame.x, Mathf.Abs(directionEachFrame.y) > Mathf.Abs(max_speed_y) ? (max_speed_y * directionEachFrame.y / Mathf.Abs(directionEachFrame.y)) : directionEachFrame.y);
+            oldMousePos = curPosMouse;
+            UpdateLastPoint();
+            if ((Vector2)directionEachFrame == Vector2.zero)
+            {
+                directionEachFrame = Vector2.zero;
+            }
+            if (ropeAttached == false)
+            {
+                var dirRaycast = DirectionRaycast();
+                var hit = Physics2D.Raycast(hand.transform.position, dirRaycast, 10, 1 << LayerMask.NameToLayer(StringDefine.GAMETAG_BARRIER));
+                collider12 = hit.collider;
+                if (hit.collider != null)
+                {
+                    Vector2 nearPoint12 = GetPointNearOfPolygon(hit.collider, hit.point);
+                    if (ropePositions[ropePositions.Count - 2] != nearPoint12)
+                    {
+                        collider2Ds.Add(hit.collider);//them collider vao trong listCollider
+                        if (isBetween(nearPoint12, hand.transform.position, ropePositions[ropePositions.Count - 2]))
+                        {
+                            ropeAttached = true;
+                            ropePositions.Insert(ropePositions.Count - 1, nearPoint12);
 
+                        }
+                    }
+                    else//ropePositions[ropePositions.Count - 2] == hit.point 
+                    {
+                        //day la doan xu ly remove diem gan cuoi
+
+                        if (ropePositions.Count >= 3)
+                        {
+                            var dir31 = DirectionRayCast31();
+                            var hit31 = Physics2D.Raycast(hand.transform.position, dir31, 10f, 1 << LayerMask.NameToLayer(StringDefine.GAMELAYER_BARRIER));
+                            collider13 = hit31.collider;
+                            if (hit31.collider != null)//sua o day
+                            {
+                                Vector2 nearPoint13 = GetPointNearOfPolygon(hit31.collider, hit31.point);
+                                float distance = Vector2.Distance(hit31.point, ropePositions[ropePositions.Count - 3]);
+                                //if (hit31.point == ropePositions[ropePositions.Count - 3])
+                                //if (distance < 0.2f)
+                                if (hit31.collider == collider2Ds[collider2Ds.Count-2])
+                                {
+                                    if (hit.collider != hit31.collider)
+                                    {
+                                        Vector2 center = centerTriangle(ropePositions[ropePositions.Count - 2], ropePositions[ropePositions.Count - 3], (Vector2)hand.transform.position);
+                                        List<Vector2> newList = GetPointOfAPolygon(collider12.GetComponent<PolygonCollider2D>());
+                                        Vector2 randomPoint = RandomPointList(newList, (Vector2)hit.point);
+                                        if (!SameSide(center, randomPoint, ropePositions[ropePositions.Count - 2], ropePositions[ropePositions.Count - 3]))
+                                        {
+                                            RemovePointNearEnd();
+                                            collider2Ds.RemoveAt(collider2Ds.Count - 1);//remove phan tu cuoi cung
+                                        }
+
+                                    }
+                                    else//hit.collider == hit31.collider
+                                    {
+                                        Vector2 center = centerTriangle(ropePositions[ropePositions.Count - 2], ropePositions[ropePositions.Count - 3], (Vector2)hand.transform.position);
+                                        List<Vector2> newList = GetPointOfAPolygon(collider12.GetComponent<PolygonCollider2D>());
+                                        Vector2 randomPoint = RandomPointList2(newList, (Vector2)nearPoint12, (Vector2)nearPoint13);
+                                        if (!SameSide(center, randomPoint, ropePositions[ropePositions.Count - 2], ropePositions[ropePositions.Count - 3]))
+                                        {
+                                            RemovePointNearEnd();
+                                            collider2Ds.RemoveAt(collider2Ds.Count - 1);
+                                        }
+                                    }
+
+                                }
+
+                            }
+                            else//hit31.collider ==null
+                            {
+                                if (ropePositions.Count == 3)
+                                {
+                                    Vector2 center = centerTriangle(ropePositions[0], ropePositions[1], (Vector2)hand.transform.position);
+                                    List<Vector2> newList = GetPointOfAPolygon(collider12.GetComponent<PolygonCollider2D>());
+                                    Vector2 newRandomPoint = RandomPointList(newList, (Vector2)nearPoint12);
+                                    if (SameSide(newRandomPoint, center, ropePositions[0], ropePositions[1]) == false)
+                                    {
+                                        RemovePointNearEnd();
+                                        collider2Ds.RemoveAt(collider2Ds.Count - 1);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (Input.GetMouseButtonUp(0))
+        {
+            directionEachFrame = Vector2.zero;
+            ropeAttached = false;
+            HandController handController = hand.GetComponent<HandController>();
+            if (handController.CanConnectWithItem)
+            {
+                handController.SetParent();
+                canPullBack = true;
+                Obstacle.Ins.SetIsTriggerBarrier(true);
+            }
+        }
+    }
+    #endregion
 }

@@ -38,9 +38,15 @@ public class Obstacle : MonoBehaviour
     }
     private void GetArrayPolygon()
     {
-        arrayPolygon = gameObject.transform.GetComponentsInChildren<PolygonCollider2D>();
+        //arrayPolygon = gameObject.transform.GetComponentsInChildren<PolygonCollider2D>();
         //lay ra 1 mang cac polygon ung voi cac vat can( barrier)
         //luu y cac phan tu con chi duoc gan polygon collider2D
+
+        arrayPolygon = new PolygonCollider2D[gameObject.transform.childCount - 4];
+        for (int i = 4; i < transform.childCount; i++)
+        {
+            arrayPolygon[i - 4] = transform.GetChild(i).GetComponent<PolygonCollider2D>();
+        }
     }
     public void SetIsTriggerBarrier(bool value)
     {
